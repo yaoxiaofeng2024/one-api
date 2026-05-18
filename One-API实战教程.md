@@ -29,19 +29,18 @@
 | 依赖 | 版本要求 | 用途 | 下载地址 |
 |------|---------|------|----------|
 | **Go** | >= 1.20 | 后端开发语言 | https://go.dev/dl/ |
-| **TDM-GCC** | 10.3.0 | SQLite CGO 支持 | https://github.com/jmeubank/tdm-gcc/releases |
 | **Git** | 任意版本 | 代码克隆 | https://git-scm.com/download/win |
 | **Node.js** | >= 16 (LTS) | 前端构建 | https://nodejs.org/ |
 | **PowerShell** | 5.0+ | Windows 终端 | 系统自带 |
+| **MySQL** | 8.0 | 数据库 | https://dev.mysql.com/downloads/mysql/ |
+| **Redis** | 7.x | 缓存系统 | https://github.com/tporadowski/redis/releases |
 
-#### 可选依赖（生产环境推荐）
+#### 可选依赖
 
 | 依赖 | 版本 | 用途 | 安装方式 |
 |------|------|------|----------|
-| **Docker Desktop** | 最新 | 容器化部署 | https://www.docker.com/products/docker-desktop |
-| **MySQL** | 8.0 | 生产数据库 | Docker 镜像 |
-| **Redis** | 7.x | 缓存系统 | Docker 镜像 |
 | **VS Code** | 最新 | 代码编辑器 | https://code.visualstudio.com/ |
+| **Docker Desktop** | 最新 | 容器化部署（可选） | https://www.docker.com/products/docker-desktop |
 
 #### 快速检查脚本
 
@@ -57,14 +56,6 @@ try {
     Write-Host "✓ Go: $goVersion" -ForegroundColor Green
 } catch {
     Write-Host "✗ Go: 未安装" -ForegroundColor Red
-}
-
-# 检查 GCC
-try {
-    $gccVersion = gcc --version 2>&1 | Select-Object -First 1
-    Write-Host "✓ GCC: $gccVersion" -ForegroundColor Green
-} catch {
-    Write-Host "✗ GCC: 未安装（SQLite 必需）" -ForegroundColor Red
 }
 
 # 检查 Git
@@ -91,12 +82,20 @@ try {
     Write-Host "✗ npm: 未安装" -ForegroundColor Red
 }
 
-# 检查 Docker
+# 检查 MySQL
 try {
-    $dockerVersion = docker --version 2>&1
-    Write-Host "✓ Docker: $dockerVersion" -ForegroundColor Green
+    $mysqlVersion = mysql --version 2>&1
+    Write-Host "✓ MySQL: $mysqlVersion" -ForegroundColor Green
 } catch {
-    Write-Host "✗ Docker: 未安装（可选）" -ForegroundColor Yellow
+    Write-Host "✗ MySQL: 未安装（必需）" -ForegroundColor Red
+}
+
+# 检查 Redis
+try {
+    $redisVersion = redis-server --version 2>&1
+    Write-Host "✓ Redis: $redisVersion" -ForegroundColor Green
+} catch {
+    Write-Host "✗ Redis: 未安装（必需）" -ForegroundColor Red
 }
 
 Write-Host ""
@@ -109,11 +108,11 @@ Write-Host "=== 检查完成 ===" -ForegroundColor Cyan
 === One-API 环境检查 ===
 
 ✓ Go: go version go1.25.0 windows/amd64
-✓ GCC: gcc (tdm64-1) 10.3.0
 ✓ Git: git version 2.42.0.windows.2
 ✓ Node.js: v25.2.1
 ✓ npm: 11.6.2
-✓ Docker: Docker version 24.0.7, build afdd53b
+✓ MySQL: mysql  Ver 8.0.xx for Win64 on x86_64 (MySQL Community Server - GPL)
+✓ Redis: Redis server v=7.0.xx sha=00000000:0 malloc=jemalloc-5.2.1 bits=64
 
 === 检查完成 ===
 ```
@@ -163,7 +162,7 @@ One-API 是一个开源的 LLM（大语言模型）API 管理和分发系统。�
 - **Go 1.20+**：高性能后端语言
 - **Gin Framework**：轻量级 Web 框架
 - **GORM**：ORM 数据库操作库
-- **SQLite/MySQL/PostgreSQL**：数据库支持
+- **MySQL/PostgreSQL**：数据库支持
 - **Redis**：缓存系统（可选）
 
 **前端技术：**
@@ -192,57 +191,14 @@ One-API 是一个开源的 LLM（大语言模型）API 管理和分发系统。�
 
 - [ ] 安装 Go 1.20+ 环境
 - [ ] 安装 Node.js 和 npm
-- [ ] 安装 Docker（可选）
+- [ ] 安装 MySQL 8.0
+- [ ] 安装 Redis 7.x
 - [ ] 克隆项目代码
 - [ ] 验证环境配置
 
 #### 详细步骤
 
 ##### Step 1: 安装 Go 语言环境（Windows）
-
-**前置依赖：安装 TDM-GCC（SQLite 必需）**
-
-⚠️ **重要：** One-API 使用 SQLite 数据库时需要 CGO 支持，必须先安装 GCC 编译器。
-
-**安装 TDM-GCC：**
-
-1. **下载 TDM-GCC**
-   - 访问：https://github.com/jmeubank/tdm-gcc/releases/download/v10.3.0-tdm64-1/tdm64-gcc-10.3.0.exe
-   - 文件大小：约 50MB
-   - 下载时间：1-3 分钟（取决于网络速度）
-
-2. **安装步骤**
-   - 双击运行 `tdm64-gcc-10.3.0.exe`
-   - 点击 **"Create"** 按钮
-   - 保持默认路径：`C:\TDM-GCC-64`
-   - 点击 **"Next"**
-   - 所有组件保持默认勾选
-   - 点击 **"Install"**
-   - 等待安装完成（约 2 分钟）
-   - 点击 **"Finish"**
-
-3. **验证安装**
-   
-   **重要：关闭所有 PowerShell 窗口，重新打开一个新的！**
-   
-   ```powershell
-   gcc --version
-   # 应该输出：gcc (tdm64-1) 10.3.0
-   ```
-
-4. **如果 gcc 命令找不到**
-   ```powershell
-   # 检查环境变量
-   $env:Path -split ';' | Select-String "TDM-GCC"
-   
-   # 如果没有输出，手动添加：
-   [Environment]::SetEnvironmentVariable("Path", $env:Path + ";C:\TDM-GCC-64\bin", [EnvironmentVariableTarget]::User)
-   
-   # 重新打开 PowerShell 后再次验证
-   gcc --version
-   ```
-
----
 
 **Go 安装步骤：**
 
@@ -283,46 +239,121 @@ npm --version
 - 重新打开 PowerShell（确保关闭所有之前的窗口）
 - 或者重启电脑
 
-##### Step 3: 安装 Docker Desktop（Windows）
+##### Step 3: 安装 MySQL（Windows）
 
-**方式一：使用 WSL2（推荐）**
+1. **下载 MySQL**
+   - 访问：https://dev.mysql.com/downloads/mysql/
+   - 选择 Windows 版本，下载 MSI 安装包
+   - 选择 "MySQL Installer for Windows"
 
-1. **启用 WSL2**（以管理员身份运行 PowerShell）：
-```powershell
-wsl --install
-```
-重启电脑后继续。
+2. **安装步骤**
+   - 双击运行安装程序
+   - 选择 **"Server only"** 或 **"Custom"**（推荐 Custom，只安装 Server 和 Command Line）
+   - 点击 **"Next"**
+   - 类型选择 **"Standalone MySQL Server"**
+   - 配置类型选择 **"Development Computer"**
+   - 端口保持默认 **3306**
+   - 认证方法选择 **"Use Legacy Authentication Method"**（兼容性更好）
+   - 设置 root 密码（本教程使用 `123456`，生产环境请使用强密码）
+   - 点击 **"Execute"** 执行安装
+   - 安装完成后点击 **"Finish"**
 
-2. **下载 Docker Desktop**：
-   - 访问 https://www.docker.com/products/docker-desktop
-   - 下载 Docker Desktop for Windows
-   - 双击安装，保持默认选项
+3. **验证安装**
 
-3. **启动 Docker Desktop**：
-   - 从开始菜单找到 Docker Desktop
-   - 首次启动会提示启用 WSL2，点击确认
-   - 等待右下角图标变为绿色（Running 状态）
+   **重要：关闭所有 PowerShell 窗口，重新打开一个新的！**
 
-4. **验证安装**：
-```powershell
-docker --version
-# 输出示例：Docker version 24.0.7, build afdd53b
+   ```powershell
+   mysql --version
+   # 应该输出：mysql  Ver 8.0.xx for Win64 on x86_64
+   ```
 
-docker compose version
-# 输出示例：Docker Compose version v2.21.0
-```
+4. **测试连接**
+   ```powershell
+   mysql -u root -p123456 -e "SELECT VERSION();"
+   # 应该输出 MySQL 版本号
+   ```
 
-**方式二：使用 Hyper-V（旧版 Windows）**
+5. **如果 mysql 命令找不到**
+   ```powershell
+   # 检查环境变量
+   $env:Path -split ';' | Select-String "MySQL"
 
-如果你的 Windows 不支持 WSL2，可以使用 Hyper-V：
-1. 启用 Hyper-V（控制面板 → 程序和功能 → 启用或关闭 Windows 功能）
-2. 安装 Docker Desktop 时选择 Hyper-V 后端
+   # 手动添加（路径根据实际安装位置调整）：
+   [Environment]::SetEnvironmentVariable("Path", $env:Path + ";C:\Program Files\MySQL\MySQL Server 8.0\bin", [EnvironmentVariableTarget]::User)
 
-**常见问题：**
-- 如果启动失败，检查 BIOS 中是否启用了虚拟化
-- 确保 Windows 版本为 Windows 10 专业版/企业版/教育版 或 Windows 11
+   # 重新打开 PowerShell 后再次验证
+   mysql --version
+   ```
 
-##### Step 4: 克隆项目代码（Windows）
+6. **手动创建数据库（⚠️ 启动 One-API 前必须执行！）**
+   ```powershell
+   # 登录 MySQL
+   mysql -u root -p123456
+
+   # 在 MySQL 命令行中执行：
+   CREATE DATABASE IF NOT EXISTS `one-api` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+   SHOW DATABASES;
+   # 应该能看到 one-api 数据库
+   EXIT;
+   ```
+
+   > **重要说明：** One-API 启动时会通过 GORM 的 `AutoMigrate` 自动创建所有表（users、tokens、channels 等），但**数据库本身需要手动创建**。如果忘记创建数据库，启动时会报错 `Unknown database 'one-api'`。
+
+##### Step 4: 安装 Redis（Windows）
+
+1. **下载 Redis for Windows**
+   - 访问：https://github.com/tporadowski/redis/releases
+   - 下载最新版 `Redis-x64-*.msi` 安装包
+
+2. **安装步骤**
+   - 双击运行安装程序
+   - 勾选 **"Add Redis to PATH"**（添加到环境变量）
+   - 端口保持默认 **6379**
+   - 勾选 **"Install as Windows Service"**（安装为 Windows 服务，开机自启）
+   - 点击 **"Install"**
+
+3. **验证安装**
+
+   ```powershell
+   redis-server --version
+   # 应该输出：Redis server v=7.0.xx
+   ```
+
+4. **测试连接**
+   ```powershell
+   redis-cli ping
+   # 应该输出：PONG
+   ```
+
+5. **如果 Redis 未作为服务运行，手动启动**
+   ```powershell
+   # 启动 Redis 服务
+   redis-server
+
+   # 或使用 Windows 服务管理
+   net start Redis
+   ```
+
+6. **Redis 常用管理命令**
+   ```powershell
+   # 启动服务
+   net start Redis
+
+   # 停止服务
+   net stop Redis
+
+   # 进入 Redis CLI
+   redis-cli
+
+   # 在 Redis CLI 中测试
+   127.0.0.1:6379> SET test hello
+   OK
+   127.0.0.1:6379> GET test
+   "hello"
+   127.0.0.1:6379> EXIT
+   ```
+
+##### Step 5: 克隆项目代码（Windows）
 
 **前提：** 确保已安装 Git
 - 下载地址：https://git-scm.com/download/win
@@ -358,7 +389,7 @@ ls
 git clone https://ghproxy.com/https://github.com/songquanpeng/one-api.git
 ```
 
-##### Step 5: 下载 Go 依赖（Windows）
+##### Step 6: 下载 Go 依赖（Windows）
 
 在项目根目录打开 PowerShell，执行：
 
@@ -405,11 +436,20 @@ node --version
 # 检查 npm 版本
 npm --version
 
-# 检查 Docker（如果安装了）
-docker --version
+# 检查 MySQL
+mysql --version
+
+# 测试 MySQL 连接
+mysql -u root -p123456 -e "SELECT VERSION();"
+
+# 检查 Redis
+redis-server --version
+
+# 测试 Redis 连接
+redis-cli ping
 
 # 进入项目目录并检查依赖
-cd D:\aicodes\oneapi\one-api
+cd D:\codes\one-api
 go mod verify
 ```
 
@@ -418,7 +458,9 @@ go mod verify
 go version go1.21.6 windows/amd64
 v20.10.0
 10.2.3
-Docker version 24.0.7, build afdd53b
+mysql  Ver 8.0.xx for Win64 on x86_64
+Redis server v=7.0.xx
+PONG
 ```
 
 全部通过后，恭喜你！Windows 环境搭建完成 🎉
@@ -435,190 +477,110 @@ $env:Path -split ';' | Select-String "Go"
 # 然后重新打开 PowerShell
 ```
 
-❌ **问题 2：权限错误**
+❌ **问题 2：`mysql` 命令找不到**
 ```powershell
-# 以管理员身份运行 PowerShell
-# 右键 PowerShell → "以管理员身份运行"
+# 解决方案：检查环境变量
+$env:Path -split ';' | Select-String "MySQL"
+
+# 手动添加：
+[Environment]::SetEnvironmentVariable("Path", $env:Path + ";C:\Program Files\MySQL\MySQL Server 8.0\bin", [EnvironmentVariableTarget]::User)
+# 然后重新打开 PowerShell
 ```
 
-❌ **问题 3：防火墙阻止 Docker**
-```
-# 允许 Docker 通过防火墙
-# 控制面板 → Windows Defender 防火墙 → 允许应用通过防火墙
-# 找到 Docker Desktop，勾选专用和公用
+❌ **问题 3：Redis 连接失败**
+```powershell
+# 检查 Redis 服务是否在运行
+Get-Service Redis
+
+# 如果未运行，启动服务
+net start Redis
 ```
 
 ---
 
-### 1.3 Docker 环境配置（MySQL + Redis）
+### 1.3 MySQL 与 Redis 配置
 
-如果你不想使用 SQLite，可以使用 Docker 部署 MySQL 和 Redis，这是**生产环境推荐方案**。
+One-API 使用 MySQL 作为主数据库，Redis 作为缓存系统。上一步已完成安装，本节进行连接配置。
 
-#### 前置条件
+#### 前置检查
 
-确保 Docker Desktop 已安装并正在运行：
-```powershell
-docker --version
-docker ps
-```
-
-#### Step 1: 使用 Docker 部署 MySQL
-
-**创建并启动 MySQL 容器：**
+确保 MySQL 和 Redis 服务正在运行：
 
 ```powershell
-docker run -d `
-  --name mysql-oneapi `
-  -e MYSQL_ROOT_PASSWORD=OneAPI@2024 `
-  -e MYSQL_DATABASE=oneapi `
-  -e MYSQL_USER=oneapi `
-  -e MYSQL_PASSWORD=OneAPI@2024 `
-  -p 3306:3306 `
-  -v mysql-data:/var/lib/mysql `
-  --restart always `
-  mysql:8.0
-```
+# 检查 MySQL
+mysql -u root -p123456 -e "SELECT VERSION();"
 
-**参数说明：**
-- `--name mysql-oneapi`: 容器名称
-- `MYSQL_ROOT_PASSWORD`: root 用户密码（请修改为强密码）
-- `MYSQL_DATABASE`: 自动创建的数据库名
-- `MYSQL_USER`: 创建普通用户
-- `MYSQL_PASSWORD`: 普通用户密码
-- `-p 3306:3306`: 映射端口
-- `-v mysql-data:/var/lib/mysql`: 数据持久化
-- `--restart always`: 开机自启
-
-**验证 MySQL 是否启动成功：**
-
-```powershell
-# 查看容器状态
-docker ps | Select-String mysql
-
-# 查看日志
-docker logs mysql-oneapi
-
-# 应该看到类似输出：
-# [Server] A temporary password is generated for root@localhost
-# ...ready for connections.
-```
-
-**测试连接：**
-
-```powershell
-# 进入容器内测试
-docker exec -it mysql-oneapi mysql -u oneapi -pOneAPI@2024 -e "SELECT VERSION();"
-
-# 应该输出 MySQL 版本号
-```
-
-**常用管理命令：**
-
-```powershell
-# 停止 MySQL
-docker stop mysql-oneapi
-
-# 启动 MySQL
-docker start mysql-oneapi
-
-# 重启 MySQL
-docker restart mysql-oneapi
-
-# 查看日志
-docker logs -f mysql-oneapi
-
-# 删除容器（数据会保留在卷中）
-docker rm -f mysql-oneapi
-
-# 删除数据卷（谨慎操作！）
-docker volume rm mysql-data
-```
-
----
-
-#### Step 2: 使用 Docker 部署 Redis
-
-**创建并启动 Redis 容器：**
-
-```powershell
-docker run -d `
-  --name redis-oneapi `
-  -p 6379:6379 `
-  -v redis-data:/data `
-  --restart always `
-  redis:7-alpine `
-  redis-server --appendonly yes
-```
-
-**参数说明：**
-- `--name redis-oneapi`: 容器名称
-- `-p 6379:6379`: 映射端口
-- `-v redis-data:/data`: 数据持久化
-- `--appendonly yes`: 启用 AOF 持久化
-- `redis:7-alpine`: 轻量级镜像
-
-**验证 Redis 是否启动成功：**
-
-```powershell
-# 查看容器状态
-docker ps | Select-String redis
-
-# 测试连接
-docker exec -it redis-oneapi redis-cli ping
+# 检查 Redis
+redis-cli ping
 # 应该输出：PONG
 ```
 
-**常用管理命令：**
+#### Step 1: 创建 MySQL 数据库
+
+> ⚠️ **启动 One-API 前必须手动创建数据库！**
+> One-API 的 GORM AutoMigrate 会自动创建表，但**不会自动创建数据库**。
 
 ```powershell
-# 停止 Redis
-docker stop redis-oneapi
+# 登录 MySQL
+mysql -u root -p123456
 
-# 启动 Redis
-docker start redis-oneapi
-
-# 查看日志
-docker logs -f redis-oneapi
-
-# 进入 Redis CLI
-docker exec -it redis-oneapi redis-cli
-
-# 在 Redis CLI 中测试
-127.0.0.1:6379> SET test hello
-OK
-127.0.0.1:6379> GET test
-"hello"
-127.0.0.1:6379> EXIT
+# 在 MySQL 命令行中执行：
+CREATE DATABASE IF NOT EXISTS `one-api` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+SHOW DATABASES;
+# 应该能看到 one-api 数据库
+EXIT;
 ```
 
----
+**如果需要创建独立的日志数据库（可选，减少主库压力）：**
+```powershell
+mysql -u root -p123456 -e "CREATE DATABASE IF NOT EXISTS `one-api-log` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+```
 
-#### Step 3: 配置 One-API 使用 MySQL + Redis
+#### Step 2: 配置 One-API 连接 MySQL + Redis
 
 **创建 `.env` 配置文件：**
 
 ```powershell
-cd D:\aicodes\oneapi\one-api
-
-@"
-# 数据库配置（MySQL）
-SQL_DSN=oneapi:OneAPI@2024@tcp(localhost:3306)/oneapi
-
-# Redis 配置
-REDIS_CONN_STRING=redis://localhost:6379
-
-# Session 密钥（必须修改！生成方法见下方）
-SESSION_SECRET=CHANGE_THIS_TO_RANDOM_STRING
-
-# 其他配置
-PORT=3000
-TZ=Asia/Shanghai
-DEBUG=false
-THEME=default
-"@ | Out-File -FilePath .env -Encoding utf8
+cd D:\codes\one-api
 ```
 
-**生成随机 SESSION_SECRET：**
+在项目根目录创建 `.env` 文件，内容如下：
+
+```ini
+# ========== 服务端口 ==========
+PORT=3000
+
+# ========== MySQL 数据库配置 ==========
+# 格式：用户名:密码@tcp(主机:端口)/数据库名?参数
+SQL_DSN=root:123456@tcp(localhost:3306)/one-api?charset=utf8mb4&parseTime=True&loc=Local
+
+# 日志数据库（可选，不设置则与主库共用）
+# LOG_SQL_DSN=root:123456@tcp(localhost:3306)/one-api-log?charset=utf8mb4&parseTime=True&loc=Local
+
+# ========== Redis 配置 ==========
+# 格式：redis://主机:端口/数据库编号
+REDIS_CONN_STRING=redis://127.0.0.1:6379/0
+
+# ========== 缓存同步配置 ==========
+# 内存缓存同步频率（秒），启用 Redis 时必须设置此值，否则 Redis 不会生效
+SYNC_FREQUENCY=60
+
+# ========== 会话安全 ==========
+# 会话密钥（生产环境务必修改为随机字符串）
+# SESSION_SECRET=your_random_secret_key
+
+# ========== 其他配置 ==========
+# 调试模式
+# DEBUG=false
+
+# 渠道自动测试频率（秒），不设置则不启用
+# CHANNEL_TEST_FREQUENCY=300
+
+# 批量更新模式（高并发写入场景开启）
+# BATCH_UPDATE_ENABLED=true
+```
+
+**生成随机 SESSION_SECRET（生产环境推荐）：**
 
 ```powershell
 # 生成 32 位随机字符串
@@ -636,30 +598,10 @@ Write-Host "生成的 SESSION_SECRET: $secret"
 Get-Content .env
 ```
 
-应该看到类似内容：
-```
-# 数据库配置（MySQL）
-SQL_DSN=oneapi:OneAPI@2024@tcp(localhost:3306)/oneapi
-
-# Redis 配置
-REDIS_CONN_STRING=redis://localhost:6379
-
-# Session 密钥（必须修改！生成方法见下方）
-SESSION_SECRET=k8Jx2mP9qR4tY7wZ3nB6vC1xF5hL0jA8
-
-# 其他配置
-PORT=3000
-TZ=Asia/Shanghai
-DEBUG=false
-THEME=default
-```
-
----
-
-#### Step 4: 启动 One-API
+#### Step 3: 启动 One-API
 
 ```powershell
-cd D:\aicodes\oneapi\one-api
+cd D:\codes\one-api
 go run main.go
 ```
 
@@ -668,21 +610,27 @@ go run main.go
 ```
 [INFO] One API v0.6.0 started
 [INFO] using MySQL as database
-[INFO] database initialized
-[INFO] redis client initialized
+[INFO] database migration started
+[INFO] database migrated
+[INFO] Redis is enabled
 [INFO] root account created
-[INFO] server started on port 3000
+[INFO] server started on http://localhost:3000
 ```
 
 **关键日志说明：**
-- ✅ `using MySQL as database` - 使用 MySQL 而非 SQLite
-- ✅ `redis client initialized` - Redis 连接成功
-- ✅ `database initialized` - 数据库表创建成功
-- ✅ `root account created` - 默认管理员账号创建成功
+- ✅ `using MySQL as database` - 使用 MySQL 作为数据库
+- ✅ `database migrated` - 数据库表自动创建成功
+- ✅ `Redis is enabled` - Redis 连接成功
+- ✅ `root account created` - 默认管理员账号创建成功（首次启动时）
 
----
+**如果启动报错：**
 
-#### Step 5: 验证系统运行
+❌ `Unknown database 'one-api'` → 忘记创建数据库，执行 Step 1
+❌ `Access denied for user 'root'@'localhost'` → MySQL 密码不正确，检查 SQL_DSN 配置
+❌ `REDIS_CONN_STRING not set, Redis is not enabled` → .env 文件未正确加载，确认文件在项目根目录
+❌ `SYNC_FREQUENCY not set, Redis is disabled` → 需要同时设置 SYNC_FREQUENCY
+
+#### Step 4: 验证系统运行
 
 1. **浏览器访问**：http://localhost:3000
 2. **登录系统**：
@@ -690,136 +638,21 @@ go run main.go
    - 密码：`123456`
 3. **⚠️ 立即修改密码！**
 
-4. **检查数据库连接**：
+4. **检查数据库表是否自动创建成功**：
    ```powershell
    # 查看数据库中的表
-   docker exec -it mysql-oneapi mysql -u oneapi -pOneAPI@2024 oneapi -e "SHOW TABLES;"
-   
-   # 应该看到：users, tokens, channels, logs 等表
+   mysql -u root -p123456 -e "USE `one-api`; SHOW TABLES;"
+
+   # 应该看到：users, tokens, channels, logs, abilities, options, redemptions 等表
    ```
 
 5. **检查 Redis 缓存**：
    ```powershell
    # 查看 Redis 中的键
-   docker exec -it redis-oneapi redis-cli KEYS '*'
-   
+   redis-cli KEYS '*'
+
    # 首次启动可能为空，使用系统后会逐渐有缓存
    ```
-
----
-
-#### 完整 Docker Compose 方案（推荐）
-
-如果你想一键启动所有服务，可以使用 Docker Compose。
-
-**创建 `docker-compose.yml` 文件：**
-
-```powershell
-cd D:\aicodes\oneapi
-
-@'
-version: '3.8'
-
-services:
-  # MySQL 数据库
-  mysql:
-    image: mysql:8.0
-    container_name: mysql-oneapi
-    environment:
-      MYSQL_ROOT_PASSWORD: OneAPI@2024
-      MYSQL_DATABASE: oneapi
-      MYSQL_USER: oneapi
-      MYSQL_PASSWORD: OneAPI@2024
-    ports:
-      - "3306:3306"
-    volumes:
-      - mysql-data:/var/lib/mysql
-    restart: always
-    command: --default-authentication-plugin=mysql_native_password
-
-  # Redis 缓存
-  redis:
-    image: redis:7-alpine
-    container_name: redis-oneapi
-    ports:
-      - "6379:6379"
-    volumes:
-      - redis-data:/data
-    restart: always
-    command: redis-server --appendonly yes
-
-  # One-API 应用
-  one-api:
-    image: justsong/one-api
-    container_name: one-api-app
-    ports:
-      - "3000:3000"
-    environment:
-      - SQL_DSN=oneapi:OneAPI@2024@tcp(mysql:3306)/oneapi
-      - REDIS_CONN_STRING=redis://redis:6379
-      - SESSION_SECRET=CHANGE_THIS_TO_RANDOM_STRING
-      - TZ=Asia/Shanghai
-    volumes:
-      - ./one-api-data:/data
-    depends_on:
-      - mysql
-      - redis
-    restart: always
-
-volumes:
-  mysql-data:
-  redis-data:
-'@ | Out-File -FilePath docker-compose.yml -Encoding utf8
-```
-
-**启动所有服务：**
-
-```powershell
-cd D:\aicodes\oneapi
-docker-compose up -d
-```
-
-**查看服务状态：**
-
-```powershell
-docker-compose ps
-```
-
-应该看到三个容器都在运行：
-```
-NAME                STATUS         PORTS
-mysql-oneapi        Up             0.0.0.0:3306->3306/tcp
-redis-oneapi        Up             0.0.0.0:6379->6379/tcp
-one-api-app         Up             0.0.0.0:3000->3000/tcp
-```
-
-**查看日志：**
-
-```powershell
-# 查看所有服务日志
-docker-compose logs -f
-
-# 查看特定服务日志
-docker-compose logs -f one-api
-```
-
-**停止所有服务：**
-
-```powershell
-docker-compose down
-```
-
-**停止并删除数据（谨慎操作！）：**
-
-```powershell
-docker-compose down -v
-```
-
-**访问系统：**
-
-浏览器打开：http://localhost:3000
-- 用户名：`root`
-- 密码：`123456`
 
 ---
 
@@ -988,7 +821,7 @@ one-api/
          ▼                        ▼
 ┌──────────────────┐   ┌──────────────────────┐
 │  Database        │   │  第三方 AI API         │
-│  • SQLite        │   │  • OpenAI             │
+│  • MySQL         │   │  • OpenAI             │
 │  • MySQL         │   │  • Claude             │
 │  • PostgreSQL    │   │  • Gemini             │
 │                  │   │  • ... (30+ 厂商)      │
@@ -1038,38 +871,45 @@ one-api/
 
 ## 第二章：启动第一个 One-API 服务
 
-### 2.1 快速启动（三种方式）
+### 2.1 快速启动
 
-#### 方式选择指南
+#### 实践任务清单
 
-| 方式 | 适用场景 | 优点 | 缺点 |
-|------|---------|------|------|
-| **SQLite** | 学习、测试、小规模使用 | 无需配置，开箱即用 | 性能较低，不支持高并发 |
-| **MySQL + Redis** | 生产环境、大规模使用 | 高性能，可扩展 | 需要配置数据库 |
-| **Docker Compose** | 快速部署、团队协作 | 一键启动所有服务 | 需要 Docker 环境 |
-
----
-
-#### 方式一：SQLite 模式（最简单，适合学习）
-
-#### 实践任务清单（所有方式通用）
-
+- [ ] 确保 MySQL 和 Redis 已启动
+- [ ] 确保已创建数据库（参见 1.3 节 Step 1）
+- [ ] 确保 `.env` 配置文件已创建
 - [ ] 编译并运行项目
 - [ ] 访问 Web 界面
 - [ ] 使用默认账号登录
 - [ ] 探索管理后台功能
 - [ ] 修改默认密码（重要！）
 
-#### 启动步骤
+#### 启动前检查
 
-##### 方式一：直接运行（Windows 推荐初学者）
+在启动 One-API 之前，请确认：
+
+```powershell
+# 1. MySQL 正在运行且数据库已创建
+mysql -u root -p123456 -e "SHOW DATABASES LIKE 'one-api';"
+# 应该看到 one-api 数据库
+
+# 2. Redis 正在运行
+redis-cli ping
+# 应该输出：PONG
+
+# 3. .env 配置文件存在
+Test-Path .env
+# 应该输出：True
+```
+
+#### 启动方式一：直接运行（推荐开发环境）
 
 **步骤：**
 
 1. 打开 PowerShell
 2. 进入项目目录：
 ```powershell
-cd D:\aicodes\oneapi\one-api
+cd D:\codes\one-api
 ```
 
 3. 直接运行（会自动下载依赖并编译）：
@@ -1082,24 +922,27 @@ go run main.go
 你会看到类似输出：
 ```
 2024/01/01 12:00:00 One API v0.6.0 started
-2024/01/01 12:00:00 running in release mode
-2024/01/01 12:00:00 database initialized
+2024/01/01 12:00:00 using MySQL as database
+2024/01/01 12:00:00 database migration started
+2024/01/01 12:00:00 database migrated
+2024/01/01 12:00:00 Redis is enabled
 2024/01/01 12:00:00 root account created
-2024/01/01 12:00:00 server started on port 3000
+2024/01/01 12:00:00 server started on http://localhost:3000
 ```
 
 **如果看到错误：**
+- `Unknown database 'one-api'` → 忘记创建数据库，参见 1.3 节 Step 1
 - 检查 Go 版本：`go version`（需要 >= 1.20）
 - 检查依赖：`go mod download`
 - 检查端口占用：`netstat -ano | findstr :3000`
 
-##### 方式二：编译后运行（Windows）
+#### 启动方式二：编译后运行（推荐生产环境）
 
 **编译为 exe 文件：**
 
 ```powershell
 # 进入项目目录
-cd D:\aicodes\oneapi\one-api
+cd D:\codes\one-api
 
 # 编译（生成 one-api.exe）
 go build -ldflags "-s -w" -o one-api.exe
@@ -1117,59 +960,6 @@ go build -ldflags "-s -w" -o one-api.exe
 - ✅ 无需 Go 环境即可运行
 - ✅ 启动速度更快
 - ✅ 可以分发给其他人使用
-
-**创建快捷方式：**
-1. 右键 `one-api.exe` → "创建快捷方式"
-2. 右键快捷方式 → "属性"
-3. 在"目标"后添加参数：`--port 3000`
-4. 双击快捷方式即可启动
-
-##### 方式三：Docker 运行（Windows 最简单）
-
-**前提：** 已完成 Step 3 安装 Docker Desktop
-
-**步骤：**
-
-1. **确保 Docker Desktop 正在运行**
-   - 查看系统托盘，Docker 图标应为绿色
-   - 如果不是，从开始菜单启动 Docker Desktop
-
-2. **在 PowerShell 中运行：**
-```powershell
-docker run -d `
-  --name one-api `
-  -p 3000:3000 `
-  -e TZ=Asia/Shanghai `
-  -v ${PWD}\data:C:\data `
-  justsong/one-api
-```
-
-**注意：** PowerShell 中使用反引号 `` ` `` 作为换行符
-
-**如果镜像拉取慢，使用国内镜像：**
-```powershell
-docker run -d `
-  --name one-api `
-  -p 3000:3000 `
-  -e TZ=Asia/Shanghai `
-  -v ${PWD}\data:C:\data `
-  registry.cn-hangzhou.aliyuncs.com/justsong/one-api
-```
-
-3. **验证容器运行：**
-```powershell
-docker ps
-# 应该能看到 one-api 容器
-
-docker logs one-api
-# 查看启动日志
-```
-
-4. **停止和删除容器（如需重新部署）：**
-```powershell
-docker stop one-api
-docker rm one-api
-```
 
 #### 验证启动（Windows）
 
@@ -1244,7 +1034,7 @@ func main() {
     }
     
     // Step 4: 初始化数据库
-    model.InitDB()        // 主数据库
+    model.InitDB()        // 主数据库（MySQL）
     model.InitLogDB()     // 日志数据库
     
     // Step 5: 创建默认管理员账号
@@ -1300,10 +1090,10 @@ func main() {
 func InitDB() (err error) {
     // 根据 SQL_DSN 判断数据库类型
     if os.Getenv("SQL_DSN") == "" {
-        // 使用 SQLite
+        // 使用 SQLite（本教程不使用此模式）
         db, err = gorm.Open(sqlite.Open("one-api.db"), &gorm.Config{})
     } else {
-        // 使用 MySQL 或 PostgreSQL
+        // 使用 MySQL（本教程配置的方式）
         db, err = gorm.Open(mysql.Open(os.Getenv("SQL_DSN")), &gorm.Config{})
     }
     
@@ -1370,26 +1160,49 @@ func main() {
 
 One-API 通过环境变量进行配置，支持两种方式：
 1. 直接设置系统环境变量
-2. 创建 `.env` 文件（推荐开发环境）
+2. 创建 `.env` 文件（推荐）
 
 ##### 核心配置项
 
-**数据库配置：**
+**MySQL 数据库配置：**
 ```bash
-# SQLite（默认，无需配置）
-# 不使用 SQL_DSN 即使用 SQLite
+# MySQL 连接字符串（DSN 格式）
+# 格式：用户名:密码@tcp(主机:端口)/数据库名?参数
+SQL_DSN="root:123456@tcp(localhost:3306)/one-api?charset=utf8mb4&parseTime=True&loc=Local"
 
-# MySQL
-SQL_DSN="root:password@tcp(localhost:3306)/oneapi"
+# 日志数据库（可选，不设置则与主库共用）
+LOG_SQL_DSN="root:123456@tcp(localhost:3306)/one-api-log?charset=utf8mb4&parseTime=True&loc=Local"
 
-# PostgreSQL
-SQL_DSN="host=localhost user=postgres password=pass dbname=oneapi port=5432 sslmode=disable"
+# 数据库连接池配置
+SQL_MAX_IDLE_CONNS=100   # 最大空闲连接数
+SQL_MAX_OPEN_CONNS=1000  # 最大打开连接数
+SQL_MAX_LIFETIME=60      # 连接最大生命周期（秒）
+```
+
+> ⚠️ **注意：** 启动前必须手动创建数据库！GORM AutoMigrate 只会自动创建表，不会创建数据库本身。
+
+**Redis 配置（必需）：**
+```bash
+# Redis 连接字符串
+# 格式：redis://主机:端口/数据库编号
+REDIS_CONN_STRING="redis://127.0.0.1:6379/0"
+
+# 如果 Redis 有密码
+# REDIS_CONN_STRING="redis://:your_password@127.0.0.1:6379/0"
+
+# Redis 哨兵/集群模式
+# REDIS_MASTER_NAME="mymaster"
+# REDIS_PASSWORD="your_password"
+
+# ⚠️ 必须设置 SYNC_FREQUENCY，否则 Redis 不会生效！
+SYNC_FREQUENCY=60
 ```
 
 **Session 配置：**
 ```bash
-# Session 加密密钥（必须设置，否则每次重启都会失效）
+# Session 加密密钥（生产环境必须设置，否则每次重启会话都会失效）
 SESSION_SECRET="your-random-secret-key-here"
+```
 
 **生成随机 SESSION_SECRET（Windows PowerShell）：**
 
@@ -1403,57 +1216,11 @@ SESSION_SECRET="your-random-secret-key-here"
 $secret = [Convert]::ToBase64String((1..32 | ForEach-Object { Get-Random -Minimum 0 -Maximum 256 }))
 "SESSION_SECRET=$secret" | Out-File -FilePath .env -Encoding utf8 -Append
 ```
-```
-
-**Redis 配置（Windows 可选，提升性能）：**
-
-**方式一：使用 Windows 版 Redis**
-
-1. 下载 Redis for Windows：
-   - GitHub: https://github.com/microsoftarchive/redis/releases
-   - 下载 `Redis-x64-3.2.100.zip`
-
-2. 解压到 `C:\Redis`
-
-3. 启动 Redis：
-```powershell
-cd C:\Redis
-.\redis-server.exe
-```
-
-4. 配置 One-API：
-```powershell
-# .env 文件
-REDIS_CONN_STRING="redis://localhost:6379"
-```
-
-**方式二：使用 Docker 运行 Redis（推荐）**
-
-```powershell
-# 启动 Redis 容器
-docker run -d `
-  --name redis `
-  -p 6379:6379 `
-  redis:7-alpine
-
-# 验证
-redis-cli ping
-# 应该输出：PONG
-```
-
-然后配置：
-```powershell
-# .env 文件
-REDIS_CONN_STRING="redis://localhost:6379"
-```
 
 **节点配置（多机部署）：**
 ```bash
 # 节点类型：master（主节点）或 slave（从节点）
 NODE_TYPE="master"
-
-# 配置同步频率（秒），0 表示不同步
-SYNC_FREQUENCY=60
 
 # 前端重定向地址（从节点使用）
 FRONTEND_BASE_URL="https://api.yourdomain.com"
@@ -1474,7 +1241,6 @@ DEBUG=true
 LOG_DIR=./logs
 
 # 主题名称
-default|berry|dark
 THEME=default
 
 # Cloudflare Turnstile 密钥（人机验证）
@@ -1485,54 +1251,46 @@ TURNSTILE_SECRET_KEY="your-secret-key"
 
 #### 实践任务：创建 .env 文件
 
-在项目根目录创建 `.env` 文件：
+在项目根目录创建 `.env` 文件（参见 1.3 节 Step 2，这里给出完整模板）：
 
-```powershell
-# d:\aicodes\oneapi\one-api\.env
-
-# 数据库配置（使用 SQLite，暂不配置）
-# SQL_DSN="root:123456@tcp(localhost:3306)/oneapi"
-
-# Session 密钥（必须修改！）
-SESSION_SECRET="my-super-secret-key-change-this"
-
-# Redis（可选）
-# REDIS_CONN_STRING="redis://localhost:6379"
-
-# 其他配置
+```ini
+# ========== 服务端口 ==========
 PORT=3000
-TZ=Asia/Shanghai
-DEBUG=false
-THEME=default
+
+# ========== MySQL 数据库配置 ==========
+SQL_DSN=root:123456@tcp(localhost:3306)/one-api?charset=utf8mb4&parseTime=True&loc=Local
+
+# ========== Redis 配置 ==========
+REDIS_CONN_STRING=redis://127.0.0.1:6379/0
+SYNC_FREQUENCY=60
+
+# ========== 会话安全 ==========
+# SESSION_SECRET=your_random_secret_key
+
+# ========== 其他配置 ==========
+# DEBUG=false
+# CHANNEL_TEST_FREQUENCY=300
+# BATCH_UPDATE_ENABLED=true
 ```
 
-**在 Windows 中创建 .env 文件的方法：**
+**创建 .env 文件的方法：**
 
-**方法一：使用记事本**
-1. 打开记事本
-2. 粘贴上面的内容
-3. 文件 → 另存为
-4. 文件名：`.env`（注意前面有点）
-5. 保存类型：所有文件（*.*）
-6. 保存到：`D:\aicodes\oneapi\one-api\`
+**方法一：使用 VS Code（推荐）**
+1. 用 VS Code 打开项目文件夹
+2. 新建文件 `.env`
+3. 粘贴上面的内容并保存
 
 **方法二：使用 PowerShell**
 ```powershell
-cd D:\aicodes\oneapi\one-api
+cd D:\codes\one-api
 
 @"
-SESSION_SECRET=my-super-secret-key-change-this
 PORT=3000
-TZ=Asia/Shanghai
-DEBUG=false
-THEME=default
+SQL_DSN=root:123456@tcp(localhost:3306)/one-api?charset=utf8mb4&parseTime=True&loc=Local
+REDIS_CONN_STRING=redis://127.0.0.1:6379/0
+SYNC_FREQUENCY=60
 "@ | Out-File -FilePath .env -Encoding utf8
 ```
-
-**方法三：使用 VS Code**
-1. 用 VS Code 打开项目文件夹
-2. 新建文件 `.env`
-3. 粘贴内容并保存
 
 重新启动服务，配置会自动加载：
 
@@ -1544,8 +1302,9 @@ go run main.go
 
 查看启动日志，应该能看到：
 ```
-running in release mode  # DEBUG=false 的效果
-server started on port 3000  # PORT=3000 的效果
+using MySQL as database    # SQL_DSN 配置生效
+Redis is enabled            # REDIS_CONN_STRING + SYNC_FREQUENCY 配置生效
+server started on http://localhost:3000  # PORT 配置生效
 ```
 
 #### 配置优先级（Windows）
@@ -2600,12 +2359,11 @@ type User struct {
 重新启动服务，GORM 会自动添加该列到数据库。
 
 验证：
-```sql
--- 如果使用 SQLite
-sqlite3 one-api.db
-.schema users
+```powershell
+# 使用 MySQL 命令行查看
+mysql -u root -p123456 -e "USE `one-api`; DESCRIBE users;"
 
--- 应该能看到 avatar_url 字段
+# 应该能看到 avatar_url 字段
 ```
 
 **任务 3：编写复杂查询**
@@ -2752,30 +2510,31 @@ func createIndex() {
 
 #### 实践练习
 
-**任务：查看数据库文件**
+**任务：查看数据库表和数据**
 
-如果使用 SQLite，可以直接查看数据库：
+使用 MySQL 命令行查看 One-API 的数据库：
 
-```bash
-# 安装 SQLite 命令行工具
-# Windows: choco install sqlite
-# macOS: brew install sqlite
-# Linux: apt-get install sqlite3
+```powershell
+# 登录 MySQL
+mysql -u root -p123456
 
-# 打开数据库
-sqlite3 one-api.db
+# 切换到 one-api 数据库
+USE `one-api`;
 
 # 查看所有表
-.tables
+SHOW TABLES;
 
 # 查看 users 表结构
-.schema users
+DESCRIBE users;
 
 # 查询数据
 SELECT id, username, role, quota FROM users;
 
+# 查看表创建语句
+SHOW CREATE TABLE users\G
+
 # 退出
-.quit
+EXIT;
 ```
 
 ---
@@ -2908,33 +2667,31 @@ One-API 采用策略 2 + 3 的组合。
 
 #### 实践任务
 
-**配置 Redis：**
+**验证 Redis 缓存：**
 
-1. 安装 Redis
-   ```bash
-   # Windows: 下载 https://github.com/microsoftarchive/redis/releases
-   # macOS: brew install redis
-   # Linux: apt-get install redis-server
+Redis 已在 1.2 节 Step 4 中安装，确保服务正在运行：
+
+1. 确认 Redis 服务运行
+   ```powershell
+   redis-cli ping
+   # 应该输出：PONG
    ```
 
-2. 启动 Redis
-   ```bash
-   redis-server
+2. 确认 .env 配置正确
+   ```ini
+   REDIS_CONN_STRING=redis://127.0.0.1:6379/0
+   SYNC_FREQUENCY=60
    ```
 
-3. 配置 One-API
-   ```bash
-   # .env 文件
-   REDIS_CONN_STRING="redis://localhost:6379"
+3. 重启 One-API 服务，观察日志
+   ```
+   Redis is enabled
+   memory cache enabled
+   sync frequency: 60 seconds
    ```
 
-4. 重启服务，观察日志
-   ```
-   redis client initialized
-   ```
-
-5. 使用 Redis CLI 查看缓存
-   ```bash
+4. 使用 Redis CLI 查看缓存
+   ```powershell
    redis-cli
    KEYS *
    GET channel:1
