@@ -6,8 +6,8 @@ client = OpenAI(
 )
 
 response = client.chat.completions.create(
-    # model="deepseek-v4-pro",
-    model="glm-4-7-251222",
+    model="deepseek-v4-pro",
+    # model="glm-4-7-251222",
     messages=[
         {"role": "user", "content": "你好，请介绍一下你自己"}
     ]
