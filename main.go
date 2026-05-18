@@ -44,30 +44,31 @@ var buildFS embed.FS
 //  9. 启动 HTTP 服务器
 func main() {
 	// ==================== 第一阶段：基础初始化 ====================
-
 	// 初始化通用组件：解析命令行参数、设置版本号、端口号等
 	common.Init()
+
 	// 配置日志系统：设置日志输出格式和目标
 	logger.SetupLogger()
+
 	// 打印启动日志，包含当前版本号
 	logger.SysLogf("One API %s started", common.Version)
 
 	// ==================== 第二阶段：运行模式配置 ====================
-
 	// 如果环境变量 GIN_MODE 不是 debug 模式，则设置为 release 模式
 	// release 模式下 Gin 会减少日志输出，提升性能
 	if os.Getenv("GIN_MODE") != gin.DebugMode {
 		gin.SetMode(gin.ReleaseMode)
 	}
+
 	// 如果启用了调试模式，打印提示信息
 	if config.DebugEnabled {
 		logger.SysLog("running in debug mode")
 	}
 
 	// ==================== 第三阶段：数据库初始化 ====================
-
 	// 初始化主数据库连接（支持 SQLite / MySQL / PostgreSQL）
 	model.InitDB()
+
 	// 初始化日志数据库连接（可与主库分离，减轻主库压力）
 	model.InitLogDB()
 
@@ -87,7 +88,6 @@ func main() {
 	}()
 
 	// ==================== 第四阶段：Redis 缓存初始化 ====================
-
 	// 初始化 Redis 客户端连接（如果配置了 Redis）
 	// Redis 用于：会话共享、限流、渠道缓存等
 	err = common.InitRedisClient()
@@ -96,7 +96,6 @@ func main() {
 	}
 
 	// ==================== 第五阶段：系统选项与内存缓存初始化 ====================
-
 	// 从数据库加载系统选项到内存（如主题、计费规则等配置项）
 	model.InitOptionMap()
 	logger.SysLog(fmt.Sprintf("using theme %s", config.Theme))
@@ -105,6 +104,7 @@ func main() {
 	if common.RedisEnabled {
 		config.MemoryCacheEnabled = true
 	}
+
 	// 内存缓存模式：将渠道信息缓存到内存中，减少数据库查询
 	// 适用于高并发场景，通过定时同步保持数据一致性
 	if config.MemoryCacheEnabled {
@@ -113,6 +113,7 @@ func main() {
 		// 初始化渠道缓存：从数据库加载所有渠道到内存
 		model.InitChannelCache()
 	}
+
 	// 启动后台协程，定时同步系统选项和渠道缓存
 	// 这样即使多个实例运行，配置变更也能在 SyncFrequency 秒内生效
 	if config.MemoryCacheEnabled {
@@ -121,7 +122,6 @@ func main() {
 	}
 
 	// ==================== 第六阶段：可选后台任务 ====================
-
 	// 渠道自动测试：定期自动测试所有渠道的可用性
 	// 通过环境变量 CHANNEL_TEST_FREQUENCY 设置测试间隔（秒）
 	if os.Getenv("CHANNEL_TEST_FREQUENCY") != "" {
@@ -144,22 +144,20 @@ func main() {
 	}
 
 	// ==================== 第七阶段：Token 编码器与 HTTP 客户端初始化 ====================
-
 	// 初始化 OpenAI Token 编码器（用于计算请求的 Token 数量）
 	// 不同模型使用不同的编码器（如 cl100k_base, o200k_base 等）
 	openai.InitTokenEncoders()
+
 	// 初始化 HTTP 客户端（设置超时、代理等）
 	client.Init()
 
 	// ==================== 第八阶段：国际化初始化 ====================
-
 	// 初始化多语言支持，加载翻译文件
 	if err := i18n.Init(); err != nil {
 		logger.FatalLog("failed to initialize i18n: " + err.Error())
 	}
 
 	// ==================== 第九阶段：HTTP 服务器配置与启动 ====================
-
 	// 创建 Gin 引擎实例（gin.New() 不含默认中间件，需手动添加）
 	server := gin.New()
 	// Recovery 中间件：捕获 panic 并返回 500 错误，防止整个服务崩溃
