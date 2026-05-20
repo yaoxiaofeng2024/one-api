@@ -8,6 +8,8 @@ client = OpenAI(
 # 查询可用模型列表
 models = client.models.list()
 
+print(models)
+
 print("可用模型列表：")
 print("-" * 50)
 for model in models.data:
