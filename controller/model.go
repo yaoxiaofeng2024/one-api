@@ -135,6 +135,7 @@ func init() {
 	// 用于 RetrieveModel 接口按名称快速查找，避免遍历
 	modelsMap = make(map[string]OpenAIModels)
 	for _, model := range models {
+		fmt.Println(model.Id)
 		modelsMap[model.Id] = model
 	}
 

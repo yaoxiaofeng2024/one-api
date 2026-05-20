@@ -13,7 +13,7 @@ client = OpenAI(
 )
 
 # 查询单个模型详情
-model = client.models.retrieve("gpt-3.5-turbo")
+model = client.models.retrieve("gpt-4")
 
 print(f"模型ID：{model.id}")
 print(f"创建时间：{model.created}")
