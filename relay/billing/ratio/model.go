@@ -789,6 +789,7 @@ func UpdateModelRatioByJSONString(jsonStr string) error {
 func GetModelRatio(name string, channelType int) float64 {
 	modelRatioLock.RLock()
 	defer modelRatioLock.RUnlock()
+
 	// 联网搜索后缀处理：qwen-xxx-internet 和 command-xxx-internet 使用原模型价格
 	if strings.HasPrefix(name, "qwen-") && strings.HasSuffix(name, "-internet") {
 		name = strings.TrimSuffix(name, "-internet")
@@ -796,6 +797,7 @@ func GetModelRatio(name string, channelType int) float64 {
 	if strings.HasPrefix(name, "command-") && strings.HasSuffix(name, "-internet") {
 		name = strings.TrimSuffix(name, "-internet")
 	}
+
 	// 先按 "模型名(渠道类型)" 查找，支持同一模型在不同渠道使用不同定价
 	model := fmt.Sprintf("%s(%d)", name, channelType)
 	if ratio, ok := ModelRatio[model]; ok {

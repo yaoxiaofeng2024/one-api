@@ -31,26 +31,27 @@ const (
 
 // User if you add sensitive fields, don't forget to clean them in setupLogin function.
 // Otherwise, the sensitive information will be saved on local storage in plain text!
+// User 用户表模型，存储系统用户信息
 type User struct {
-	Id               int    `json:"id"`
-	Username         string `json:"username" gorm:"unique;index" validate:"max=12"`
-	Password         string `json:"password" gorm:"not null;" validate:"min=8,max=20"`
-	DisplayName      string `json:"display_name" gorm:"index" validate:"max=20"`
-	Role             int    `json:"role" gorm:"type:int;default:1"`   // admin, util
-	Status           int    `json:"status" gorm:"type:int;default:1"` // enabled, disabled
-	Email            string `json:"email" gorm:"index" validate:"max=50"`
-	GitHubId         string `json:"github_id" gorm:"column:github_id;index"`
-	WeChatId         string `json:"wechat_id" gorm:"column:wechat_id;index"`
-	LarkId           string `json:"lark_id" gorm:"column:lark_id;index"`
-	OidcId           string `json:"oidc_id" gorm:"column:oidc_id;index"`
-	VerificationCode string `json:"verification_code" gorm:"-:all"`                                    // this field is only for Email verification, don't save it to database!
-	AccessToken      string `json:"access_token" gorm:"type:char(32);column:access_token;uniqueIndex"` // this token is for system management
-	Quota            int64  `json:"quota" gorm:"bigint;default:0"`
-	UsedQuota        int64  `json:"used_quota" gorm:"bigint;default:0;column:used_quota"` // used quota
-	RequestCount     int    `json:"request_count" gorm:"type:int;default:0;"`             // request number
-	Group            string `json:"group" gorm:"type:varchar(32);default:'default'"`
-	AffCode          string `json:"aff_code" gorm:"type:varchar(32);column:aff_code;uniqueIndex"`
-	InviterId        int    `json:"inviter_id" gorm:"type:int;column:inviter_id;index"`
+	Id               int    `json:"id"`                                                                // 用户ID，自增主键
+	Username         string `json:"username" gorm:"unique;index" validate:"max=12"`                    // 用户名，唯一索引，最长12字符，用于登录
+	Password         string `json:"password" gorm:"not null;" validate:"min=8,max=20"`                 // 密码（加密存储），长度8-20字符
+	DisplayName      string `json:"display_name" gorm:"index" validate:"max=20"`                       // 显示名称，有索引（支持按名称搜索），最长20字符
+	Role             int    `json:"role" gorm:"type:int;default:1"`                                    // 角色：1=普通用户，100=管理员（common/constants.go 中定义）
+	Status           int    `json:"status" gorm:"type:int;default:1"`                                  // 状态：1=启用，2=禁用
+	Email            string `json:"email" gorm:"index" validate:"max=50"`                              // 邮箱，有索引（支持邮箱登录/找回密码），最长50字符
+	GitHubId         string `json:"github_id" gorm:"column:github_id;index"`                           // GitHub OAuth 登录关联ID，有索引（支持 GitHub 免密登录）
+	WeChatId         string `json:"wechat_id" gorm:"column:wechat_id;index"`                           // 微信登录关联ID，有索引
+	LarkId           string `json:"lark_id" gorm:"column:lark_id;index"`                               // 飞书登录关联ID，有索引
+	OidcId           string `json:"oidc_id" gorm:"column:oidc_id;index"`                               // OIDC（通用单点登录）关联ID，有索引
+	VerificationCode string `json:"verification_code" gorm:"-:all"`                                    // 邮箱验证码，gorm:"-:all" 表示不持久化到数据库，仅用于注册时的内存校验
+	AccessToken      string `json:"access_token" gorm:"type:char(32);column:access_token;uniqueIndex"` // 系统管理令牌（32位随机字符串），用于 API 调用时的身份认证，唯一索引
+	Quota            int64  `json:"quota" gorm:"bigint;default:0"`                                     // 用户剩余额度（当前余额），1单位 = $0.002
+	UsedQuota        int64  `json:"used_quota" gorm:"bigint;default:0;column:used_quota"`              // 用户累计已用额度，用于仪表盘统计展示
+	RequestCount     int    `json:"request_count" gorm:"type:int;default:0;"`                          // 用户累计请求次数，用于仪表盘统计展示
+	Group            string `json:"group" gorm:"type:varchar(32);default:'default'"`                   // 用户分组，决定可用的模型范围和分组倍率（如 "vip" 组倍率更低），默认 "default"
+	AffCode          string `json:"aff_code" gorm:"type:varchar(32);column:aff_code;uniqueIndex"`      // 邀请码（32位），新用户通过此码注册后邀请人获得奖励，唯一索引
+	InviterId        int    `json:"inviter_id" gorm:"type:int;column:inviter_id;index"`                // 邀请人用户ID，有索引（支持查询"我邀请了谁"），0表示非邀请注册
 }
 
 func GetMaxUserId() int {

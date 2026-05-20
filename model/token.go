@@ -223,17 +223,29 @@ func decreaseTokenQuota(id int, quota int64) (err error) {
 	return err
 }
 
+// PreConsumeTokenQuota 预消费令牌额度
+// 在实际调用上游 AI 接口之前，先扣除预估的额度，防止超额使用。
+// 扣除是双维度的：令牌维度 + 用户维度，两者都必须有足够余额。
+// 流程：校验额度 → 邮件提醒（异步）→ 扣减令牌额度 → 扣减用户额度
+// 注意：预消费只是估算，实际用量在 PostConsumeTokenQuota 中结算（多退少补）
 func PreConsumeTokenQuota(tokenId int, quota int64) (err error) {
+	// 防御性检查：预消费额度不能为负数
 	if quota < 0 {
 		return errors.New("quota 不能为负数！")
 	}
+
+	// 第一步：查询令牌信息，检查令牌维度额度是否充足
 	token, err := GetTokenById(tokenId)
 	if err != nil {
 		return err
 	}
+	// UnlimitedQuota=true 表示令牌额度无上限，跳过令牌维度的余额检查
 	if !token.UnlimitedQuota && token.RemainQuota < quota {
 		return errors.New("令牌额度不足")
 	}
+
+	// 第二步：查询用户额度，检查用户维度额度是否充足
+	// 即使令牌额度充足，用户总额度也可能不够
 	userQuota, err := GetUserQuota(token.UserId)
 	if err != nil {
 		return err
@@ -241,9 +253,14 @@ func PreConsumeTokenQuota(tokenId int, quota int64) (err error) {
 	if userQuota < quota {
 		return errors.New("用户额度不足")
 	}
+
+	// 第三步：判断是否需要发送额度提醒邮件
+	// quotaTooLow: 扣费前高于提醒阈值，扣费后低于提醒阈值 → 额度即将用尽
+	// noMoreQuota: 扣费后用户额度归零或为负 → 额度已用尽
 	quotaTooLow := userQuota >= config.QuotaRemindThreshold && userQuota-quota < config.QuotaRemindThreshold
 	noMoreQuota := userQuota-quota <= 0
 	if quotaTooLow || noMoreQuota {
+		// 异步发送邮件，不阻塞主流程（邮件发送失败不影响请求处理）
 		go func() {
 			email, err := GetUserEmail(token.UserId)
 			if err != nil {
@@ -257,6 +274,7 @@ func PreConsumeTokenQuota(tokenId int, quota int64) (err error) {
 				contentText = "您的额度即将用尽"
 			}
 			if email != "" {
+				// 构造充值链接和 HTML 邮件内容
 				topUpLink := fmt.Sprintf("%s/topup", config.ServerAddress)
 				content := message.EmailTemplate(
 					prompt,
@@ -278,12 +296,16 @@ func PreConsumeTokenQuota(tokenId int, quota int64) (err error) {
 			}
 		}()
 	}
+
+	// 第四步：实际扣减额度（先扣令牌，再扣用户）
+	// 无限额度令牌跳过令牌维度扣减，但仍需扣减用户维度额度
 	if !token.UnlimitedQuota {
 		err = DecreaseTokenQuota(tokenId, quota)
 		if err != nil {
 			return err
 		}
 	}
+	// 用户维度额度始终需要扣减（即使用户也有"无限额度"，也会走 DecreaseUserQuota 逻辑）
 	err = DecreaseUserQuota(token.UserId, quota)
 	return err
 }
