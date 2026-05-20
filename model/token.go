@@ -14,26 +14,26 @@ import (
 )
 
 const (
-	TokenStatusEnabled   = 1 // don't use 0, 0 is the default value!
-	TokenStatusDisabled  = 2 // also don't use 0
-	TokenStatusExpired   = 3
-	TokenStatusExhausted = 4
+	TokenStatusEnabled   = 1 // 令牌可用（不用 0 是因为 0 是 int 默认值，无法区分"未设置"和"禁用"）
+	TokenStatusDisabled  = 2 // 令牌已禁用（手动禁用）
+	TokenStatusExpired   = 3 // 令牌已过期（超过 expired_time）
+	TokenStatusExhausted = 4 // 令牌额度已耗尽（remain_quota 降为 0）
 )
 
 type Token struct {
-	Id             int     `json:"id"`
-	UserId         int     `json:"user_id"`
-	Key            string  `json:"key" gorm:"type:char(48);uniqueIndex"`
-	Status         int     `json:"status" gorm:"default:1"`
-	Name           string  `json:"name" gorm:"index" `
-	CreatedTime    int64   `json:"created_time" gorm:"bigint"`
-	AccessedTime   int64   `json:"accessed_time" gorm:"bigint"`
-	ExpiredTime    int64   `json:"expired_time" gorm:"bigint;default:-1"` // -1 means never expired
-	RemainQuota    int64   `json:"remain_quota" gorm:"bigint;default:0"`
-	UnlimitedQuota bool    `json:"unlimited_quota" gorm:"default:false"`
-	UsedQuota      int64   `json:"used_quota" gorm:"bigint;default:0"` // used quota
-	Models         *string `json:"models" gorm:"type:text"`            // allowed models
-	Subnet         *string `json:"subnet" gorm:"default:''"`           // allowed subnet
+	Id             int     `json:"id"`                                    // 令牌 ID（主键）
+	UserId         int     `json:"user_id"`                               // 所属用户 ID（关联 users 表）
+	Key            string  `json:"key" gorm:"type:char(48);uniqueIndex"`  // 令牌密钥（API Key 中 sk- 后面的部分，唯一索引）
+	Status         int     `json:"status" gorm:"default:1"`               // 令牌状态：1=可用 2=禁用 3=过期 4=额度耗尽
+	Name           string  `json:"name" gorm:"index"`                     // 令牌名称（用户自定义，方便识别用途，加索引便于搜索）
+	CreatedTime    int64   `json:"created_time" gorm:"bigint"`            // 创建时间（Unix 时间戳）
+	AccessedTime   int64   `json:"accessed_time" gorm:"bigint"`           // 最后访问时间（每次调用时更新）
+	ExpiredTime    int64   `json:"expired_time" gorm:"bigint;default:-1"` // 过期时间（Unix 时间戳，-1 表示永不过期）
+	RemainQuota    int64   `json:"remain_quota" gorm:"bigint;default:0"`  // 剩余配额（额度单位，非美元，由系统换算）
+	UnlimitedQuota bool    `json:"unlimited_quota" gorm:"default:false"`  // 是否无限配额（为 true 时忽略 RemainQuota）
+	UsedQuota      int64   `json:"used_quota" gorm:"bigint;default:0"`    // 已用配额（累计消耗，用于统计和计费）
+	Models         *string `json:"models" gorm:"type:text"`               // 允许使用的模型列表（逗号分隔，为空表示不限制）
+	Subnet         *string `json:"subnet" gorm:"default:''"`              // 允许访问的 IP 子网（CIDR 格式，如 "192.168.1.0/24"，为空表示不限制）
 }
 
 func GetAllUserTokens(userId int, startIdx int, num int, order string) ([]*Token, error) {
@@ -59,10 +59,13 @@ func SearchUserTokens(userId int, keyword string) (tokens []*Token, err error) {
 	return tokens, err
 }
 
+// 验证用户令牌
 func ValidateUserToken(key string) (token *Token, err error) {
 	if key == "" {
 		return nil, errors.New("未提供令牌")
 	}
+
+	// 获取令牌
 	token, err = CacheGetTokenByKey(key)
 	if err != nil {
 		logger.SysError("CacheGetTokenByKey failed: " + err.Error())
@@ -71,6 +74,8 @@ func ValidateUserToken(key string) (token *Token, err error) {
 		}
 		return nil, errors.New("令牌验证失败")
 	}
+
+	// 状态验证
 	if token.Status == TokenStatusExhausted {
 		return nil, fmt.Errorf("令牌 %s（#%d）额度已用尽", token.Name, token.Id)
 	} else if token.Status == TokenStatusExpired {
@@ -79,6 +84,8 @@ func ValidateUserToken(key string) (token *Token, err error) {
 	if token.Status != TokenStatusEnabled {
 		return nil, errors.New("该令牌状态不可用")
 	}
+
+	// 过期时间验证
 	if token.ExpiredTime != -1 && token.ExpiredTime < helper.GetTimestamp() {
 		if !common.RedisEnabled {
 			token.Status = TokenStatusExpired
@@ -89,6 +96,8 @@ func ValidateUserToken(key string) (token *Token, err error) {
 		}
 		return nil, errors.New("该令牌已过期")
 	}
+
+	// 额度验证
 	if !token.UnlimitedQuota && token.RemainQuota <= 0 {
 		if !common.RedisEnabled {
 			// in this case, we can make sure the token is exhausted

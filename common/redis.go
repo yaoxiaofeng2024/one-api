@@ -15,16 +15,21 @@ var RedisEnabled = true
 
 // InitRedisClient This function is called after init()
 func InitRedisClient() (err error) {
+	// 如果没有设置 REDIS_CONN_STRING 环境变量，则不启用 Redis
 	if os.Getenv("REDIS_CONN_STRING") == "" {
 		RedisEnabled = false
 		logger.SysLog("REDIS_CONN_STRING not set, Redis is not enabled")
 		return nil
 	}
+
+	// 如果没有设置 SYNC_FREQUENCY 环境变量，则不启用 Redis
 	if os.Getenv("SYNC_FREQUENCY") == "" {
 		RedisEnabled = false
 		logger.SysLog("SYNC_FREQUENCY not set, Redis is disabled")
 		return nil
 	}
+
+	// 如果设置了 REDIS_MASTER_NAME 环境变量，则启用 Redis 集群模式
 	redisConnString := os.Getenv("REDIS_CONN_STRING")
 	if os.Getenv("REDIS_MASTER_NAME") == "" {
 		logger.SysLog("Redis is enabled")

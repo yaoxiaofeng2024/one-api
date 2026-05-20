@@ -5,16 +5,17 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/songquanpeng/one-api/common"
-	"github.com/songquanpeng/one-api/common/config"
-	"github.com/songquanpeng/one-api/common/logger"
-	"github.com/songquanpeng/one-api/common/random"
 	"math/rand"
 	"sort"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/songquanpeng/one-api/common"
+	"github.com/songquanpeng/one-api/common/config"
+	"github.com/songquanpeng/one-api/common/logger"
+	"github.com/songquanpeng/one-api/common/random"
 )
 
 var (
@@ -25,22 +26,50 @@ var (
 	GroupModelsCacheSeconds   = config.SyncFrequency
 )
 
+// CacheGetTokenByKey 根据 key 字段查询令牌信息，支持 Redis 缓存
+//
+// 查询的是 tokens 表（由 GORM 根据 Token 结构体自动映射）。
+// 表结构关键字段：
+//   - key:  令牌的唯一标识（char(48)，唯一索引），即 API Key 中 sk- 后面的部分
+//   - user_id, status, remain_quota, models, subnet 等：令牌的属性
+//
+// 查询策略（经典 cache-aside 模式）：
+//
+//	Redis 未启用 → 直接查 DB
+//	Redis 启用 → 先查 Redis → 命中则返回 → 未命中则查 DB 并回填 Redis
 func CacheGetTokenByKey(key string) (*Token, error) {
+	// keyCol: SQL 中 `key` 列名的引用方式
+	// MySQL/SQLite 用反引号 `key`，PostgreSQL 用双引号 "key"
+	// 因为 key 是 SQL 保留字，必须加引号避免语法错误
 	keyCol := "`key`"
 	if common.UsingPostgreSQL {
 		keyCol = `"key"`
 	}
+
 	var token Token
+
+	// ===== 分支一：Redis 未启用，直接查数据库 =====
+	// 每次请求都打 DB，适用于单实例或未配置 Redis 的部署
 	if !common.RedisEnabled {
+		// GORM 默认表名规则：结构体名复数 → Token → tokens 表
+		// 等价 SQL: SELECT * FROM tokens WHERE `key` = ? LIMIT 1
 		err := DB.Where(keyCol+" = ?", key).First(&token).Error
 		return &token, err
 	}
+
+	// ===== 分支二：Redis 已启用，先查缓存 =====
+	// Redis key 格式: "token:{key}"，如 "token:abc123"
 	tokenObjectString, err := common.RedisGet(fmt.Sprintf("token:%s", key))
 	if err != nil {
+		// 缓存未命中 → 回源查 DB
+		// 等价 SQL: SELECT * FROM tokens WHERE `key` = ? LIMIT 1
 		err := DB.Where(keyCol+" = ?", key).First(&token).Error
 		if err != nil {
-			return nil, err
+			return nil, err // DB 也没查到，返回错误
 		}
+
+		// DB 查到了，回填 Redis 缓存（过期时间 TokenCacheSeconds 秒）
+		// 后续相同 key 的请求就能命中缓存，避免重复查 DB
 		jsonBytes, err := json.Marshal(token)
 		if err != nil {
 			return nil, err
@@ -51,6 +80,8 @@ func CacheGetTokenByKey(key string) (*Token, error) {
 		}
 		return &token, nil
 	}
+
+	// 缓存命中 → 反序列化 JSON 字符串为 Token 对象，直接返回
 	err = json.Unmarshal([]byte(tokenObjectString), &token)
 	return &token, err
 }
@@ -124,6 +155,7 @@ func CacheDecreaseUserQuota(id int, quota int64) error {
 	return err
 }
 
+// CacheIsUserEnabled 缓存用户是否启用
 func CacheIsUserEnabled(userId int) (bool, error) {
 	if !common.RedisEnabled {
 		return IsUserEnabled(userId)
