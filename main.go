@@ -129,6 +129,7 @@ func main() {
 		}
 		go controller.AutomaticallyTestChannels(frequency)
 	}
+
 	// 批量更新模式：将多次数据库写操作合并为一次批量写入
 	// 适用于高写入场景，减少数据库压力
 	if os.Getenv("BATCH_UPDATE_ENABLED") == "true" {
@@ -136,6 +137,7 @@ func main() {
 		logger.SysLog("batch update enabled with interval " + strconv.Itoa(config.BatchUpdateInterval) + "s")
 		model.InitBatchUpdater()
 	}
+
 	// 指标监控：当渠道请求失败率过高时自动禁用该渠道
 	if config.EnableMetric {
 		logger.SysLog("metric enabled, will disable channel if too much request failed")

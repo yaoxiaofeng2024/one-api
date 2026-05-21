@@ -202,28 +202,43 @@ func CacheGetGroupModels(ctx context.Context, group string) ([]string, error) {
 var group2model2channels map[string]map[string][]*Channel
 var channelSyncLock sync.RWMutex
 
+// InitChannelCache 从数据库全量加载渠道数据，构建内存缓存
+// 最终生成全局变量 group2model2channels，结构为：分组 -> 模型 -> 渠道列表（按优先级降序）
+// 用于请求路由时快速查找：某个分组下某个模型可用的渠道有哪些
 func InitChannelCache() {
+	// ===== 第一步：加载所有启用的渠道 =====
 	newChannelId2channel := make(map[int]*Channel)
 	var channels []*Channel
 	DB.Where("status = ?", ChannelStatusEnabled).Find(&channels)
 	for _, channel := range channels {
 		newChannelId2channel[channel.Id] = channel
 	}
+
+	// ===== 第二步：收集所有分组（group） =====
+	// 从 abilities 表中获取所有已注册的分组名称
 	var abilities []*Ability
 	DB.Find(&abilities)
-	groups := make(map[string]bool)
+	groups := make(map[string]bool) // 用 map 去重
 	for _, ability := range abilities {
 		groups[ability.Group] = true
 	}
+
+	// ===== 第三步：构建 分组 -> 模型 -> 渠道列表 的三级映射 =====
 	newGroup2model2channels := make(map[string]map[string][]*Channel)
+	// 先初始化每个分组的二级 map
 	for group := range groups {
 		newGroup2model2channels[group] = make(map[string][]*Channel)
 	}
+
+	// 遍历所有渠道，将其按所属分组和支持的模型进行归类
 	for _, channel := range channels {
+		// 一个渠道可能属于多个分组（逗号分隔，如 "default,vip"）
 		groups := strings.Split(channel.Group, ",")
 		for _, group := range groups {
+			// 一个渠道可能支持多个模型（逗号分隔，如 "gpt-4,gpt-3.5-turbo"）
 			models := strings.Split(channel.Models, ",")
 			for _, model := range models {
+				// 懒初始化：首次遇到该 group+model 组合时创建切片
 				if _, ok := newGroup2model2channels[group][model]; !ok {
 					newGroup2model2channels[group][model] = make([]*Channel, 0)
 				}
@@ -232,7 +247,8 @@ func InitChannelCache() {
 		}
 	}
 
-	// sort by priority
+	// ===== 第四步：按优先级降序排序 =====
+	// 优先级高的渠道排在前面，路由时会优先选择
 	for group, model2channels := range newGroup2model2channels {
 		for model, channels := range model2channels {
 			sort.Slice(channels, func(i, j int) bool {
@@ -242,6 +258,8 @@ func InitChannelCache() {
 		}
 	}
 
+	// ===== 第五步：原子替换全局缓存 =====
+	// 使用写锁保护，确保并发读取不会读到半完成的数据
 	channelSyncLock.Lock()
 	group2model2channels = newGroup2model2channels
 	channelSyncLock.Unlock()
