@@ -1,5 +1,8 @@
+// Package openai 提供 OpenAI 兼容渠道的常量和模型列表。
 package openai
 
+// ModelList 包含所有支持的 OpenAI 模型。
+// 此列表用于验证和在 UI 中显示。
 var ModelList = []string{
 	"gpt-3.5-turbo", "gpt-3.5-turbo-0301", "gpt-3.5-turbo-0613", "gpt-3.5-turbo-1106", "gpt-3.5-turbo-0125",
 	"gpt-3.5-turbo-16k", "gpt-3.5-turbo-16k-0613",

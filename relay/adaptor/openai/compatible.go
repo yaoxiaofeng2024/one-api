@@ -23,6 +23,8 @@ import (
 	"github.com/songquanpeng/one-api/relay/channeltype"
 )
 
+// CompatibleChannels 列出所有使用 OpenAI 适配器的渠道类型。
+// 这些渠道遵循 OpenAI API 格式，可以使用相同的请求/响应处理。
 var CompatibleChannels = []int{
 	channeltype.Azure,
 	channeltype.AI360,
@@ -43,6 +45,9 @@ var CompatibleChannels = []int{
 	channeltype.XunfeiV2,
 }
 
+// GetCompatibleChannelMeta 返回兼容渠道的元数据。
+// 它返回给定渠道类型的渠道名称和模型列表。
+// 用于在 UI 中显示渠道信息和验证。
 func GetCompatibleChannelMeta(channelType int) (string, []string) {
 	switch channelType {
 	case channeltype.Azure:
@@ -86,6 +91,7 @@ func GetCompatibleChannelMeta(channelType int) (string, []string) {
 	case channeltype.GeminiOpenAICompatible:
 		return "geminiv2", geminiv2.ModelList
 	default:
+		// 默认使用标准 OpenAI
 		return "openai", ModelList
 	}
 }
