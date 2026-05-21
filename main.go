@@ -1,5 +1,3 @@
-// One API - 统一的 AI API 管理与分发平台
-// 本文件是程序的入口点（main 包），负责初始化所有组件并启动 HTTP 服务器
 package main
 
 import (
@@ -25,7 +23,7 @@ import (
 	"github.com/songquanpeng/one-api/router"               // 路由定义：URL 与处理函数的映射
 )
 
-// go:embed 指令：在编译时将 web/build/ 目录下的所有文件嵌入到 buildFS 变量中
+// 在编译时将 web/build/ 目录下的所有文件嵌入到 buildFS 变量中
 // 这样部署时不需要单独携带前端静态文件，只需一个二进制文件即可运行
 //
 //go:embed web/build/*

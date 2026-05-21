@@ -3,6 +3,10 @@ package model
 import (
 	"database/sql"
 	"fmt"
+	"os"
+	"strings"
+	"time"
+
 	"github.com/songquanpeng/one-api/common"
 	"github.com/songquanpeng/one-api/common/config"
 	"github.com/songquanpeng/one-api/common/env"
@@ -13,9 +17,6 @@ import (
 	"gorm.io/driver/postgres"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
-	"os"
-	"strings"
-	"time"
 )
 
 var DB *gorm.DB
@@ -109,6 +110,7 @@ func openSQLite() (*gorm.DB, error) {
 }
 
 func InitDB() {
+	// 链接数据库
 	var err error
 	DB, err = chooseDB("SQL_DSN")
 	if err != nil {
@@ -116,16 +118,19 @@ func InitDB() {
 		return
 	}
 
+	// 配置连接池参数
 	sqlDB := setDBConns(DB)
 
 	if !config.IsMasterNode {
 		return
 	}
 
+	// 删除旧的索引
 	if common.UsingMySQL {
 		_, _ = sqlDB.Exec("DROP INDEX idx_channels_key ON channels;") // TODO: delete this line when most users have upgraded
 	}
 
+	// 执行数据库迁移
 	logger.SysLog("database migration started")
 	if err = migrateDB(); err != nil {
 		logger.FatalLog("failed to migrate database: " + err.Error())
